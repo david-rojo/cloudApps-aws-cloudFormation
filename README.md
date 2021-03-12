@@ -6,7 +6,7 @@
 
 Creación de un Security Group para EC2 (__EC2_Events_SecurityGroup__):
 
-    22    TCP     my_ip	
+    22      TCP     my_ip	
     8443	TCP     0.0.0.0/0
 
 Creación de un Security Group para RDS (__RDS_EventsApp_SecurityGroup__):

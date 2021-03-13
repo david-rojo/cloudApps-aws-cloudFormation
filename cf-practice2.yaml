@@ -1,0 +1,135 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: AWS Cloud Formation - Practice 2 - David Rojo
+
+# ami id:       ami-06fd78dc2f0b69910 (ubuntu 18.04 ireland)
+# password:     springaws
+# bucket:       testp2.cf.cloudapps.david
+# jar location: https://github.com/david-rojo/cloudApps-aws-cloudFormation/releases/download/v1/app-cf.jar
+
+Parameters:
+
+  # ami id (default ubuntu 18.04 us-east-1)
+  AMIId:
+    Description: AMI to use (it must be an AMI on the current region and must be Ubuntu 18.04)
+    Type: 'AWS::EC2::Image::Id'
+    Default: ami-013f17f36f8b1fefb
+
+  # db password
+  DBPassword:
+    Description: RDS database password
+    Type: String
+    NoEcho: true
+
+  # S3 bucket name
+  BucketName:
+    Description: S3 bucket name
+    Type: String
+
+  # jar url location (default: https://s3.amazonaws.com/practica-2.cloud.michel/app.jar)
+  JarLocationUrl:
+    Description: URL of the application jar
+    Type: String
+    Default: https://s3.amazonaws.com/practica-2.cloud.michel/app.jar
+
+Resources:
+
+  # EC2 security group
+  ec2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: p2-443
+      GroupDescription: "Security Group for Java web app with ingress port 443"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'
+          CidrIp: 0.0.0.0/0
+
+  # RDS security group
+  rdsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security Group for MySQL RDS"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '3306'
+          ToPort: '3306'
+          SourceSecurityGroupName: !Ref ec2SecurityGroup # Only allowed access to the instances of this SG
+
+  # rol with full access to S3 and RDS
+
+  # db instance
+  rdsDBInstance:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceClass: db.t2.micro
+      AllocatedStorage: 10
+      AllowMajorVersionUpgrade: false
+      AutoMinorVersionUpgrade: false
+      DBInstanceIdentifier: springaws
+      DBName: springaws
+      Engine: mysql
+      EngineVersion: 8.0
+      MasterUsername: springaws
+      MasterUserPassword: !Ref DBPassword
+      MultiAZ: false
+      PubliclyAccessible: false
+      StorageEncrypted: false
+      VPCSecurityGroups:
+        - !GetAtt rdsSecurityGroup.GroupId
+      Tags:
+        - Key: Name
+          Value: mca-aws-cf-practice-2
+
+  # s3
+  s3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref BucketName
+      AccessControl: PublicRead
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+
+  # ec2 instance
+  ec2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      KeyName: "mca-cf"
+      ImageId: !Ref AMIId
+      InstanceType: "t2.micro"
+      Monitoring: false
+      SecurityGroups:
+        - !Ref ec2SecurityGroup
+      UserData:
+        Fn::Base64:
+          !Sub |
+            #!/bin/bash -ex
+            apt update && apt install -y openjdk-11-jre-headless
+            export JAR_URL=${JarLocationUrl}
+            wget $JAR_URL
+            sudo java -jar -Dspring.profiles.active=production `echo ${JAR_URL##*/}` \
+                --server.port=443 \
+                # pending
+                #--spring.datasource.url=jdbc:mysql://${RDS_DNS}/events_db \
+                #  Fn::GetAtt    rdsDBInstance.Endpoint.Address
+                --spring.datasource.username=springaws \
+                --spring.datasource.password=${DBPassword} \
+                --amazon.s3.bucket-name=${BucketName} \
+                --amazon.s3.endpoint=https://s3.amazonaws.com/${BucketName}/ \
+                --amazon.s3.region=${AWS::Region}
+      Tags:
+        - Key: Name
+          Value: mca-aws-cf-practice-2
+      DependsOn: rdsDBInstance
+
+Outputs:
+
+  # application endpoint
+  WebSiteURL:
+    Value:
+      !Join
+        - ''
+        - - "http://"
+          - !GetAtt ec2Instance.PublicDnsName
+    Description: "Application website"

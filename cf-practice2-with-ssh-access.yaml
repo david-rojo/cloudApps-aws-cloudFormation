@@ -33,7 +33,7 @@ Parameters:
     # Default location defined in the instructions of the practice
     Default: https://s3.amazonaws.com/practica-2.cloud.michel/app.jar
 
-  KeyName: # CULO
+  KeyName: # TEST
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
     Type: AWS::EC2::KeyPair::KeyName
     ConstraintDescription: must be the name of an existing EC2 KeyPair.
@@ -74,7 +74,7 @@ Resources:
           FromPort: '443'
           ToPort: '443'
           CidrIp: 0.0.0.0/0
-        - IpProtocol: tcp # CULO
+        - IpProtocol: tcp # TEST
           FromPort: '22'
           ToPort: '22'
           CidrIp: 0.0.0.0/0
@@ -129,7 +129,7 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       IamInstanceProfile: !Ref rootS3InstanceProfile
-      KeyName: !Ref KeyName # CULO
+      KeyName: !Ref KeyName # TEST
       ImageId: !Ref AMIId
       InstanceType: t2.micro
       Monitoring: true
@@ -189,5 +189,4 @@ Outputs:
         - ''
         - - "https://"
           - !GetAtt ec2Instance.PublicDnsName
-          - ":443"
     Description: "Practice 2 - Application website"

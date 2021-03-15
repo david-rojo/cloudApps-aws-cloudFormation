@@ -2,7 +2,7 @@ AWSTemplateFormatVersion: 2010-09-09
 Description: AWS Cloud Formation - Practice 2 - David Rojo
 
 # ami id:       (ubuntu 18.04 ireland) ami-06fd78dc2f0b69910
-# bucket:       p2.cf.cloudapps.david
+# bucket:       testp2.cf.cloudapps.david
 # db password:  springaws
 # jar location: https://github.com/david-rojo/cloudApps-aws-cloudFormation/releases/download/v1/app-cf.jar
 
@@ -32,6 +32,11 @@ Parameters:
     Type: String
     # Default location defined in the instructions of the practice
     Default: https://s3.amazonaws.com/practica-2.cloud.michel/app.jar
+
+  KeyName: # CULO
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
 
 Resources:
 
@@ -68,6 +73,10 @@ Resources:
         - IpProtocol: tcp
           FromPort: '443'
           ToPort: '443'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp # CULO
+          FromPort: '22'
+          ToPort: '22'
           CidrIp: 0.0.0.0/0
 
   # RDS security group
@@ -120,6 +129,7 @@ Resources:
     Type: AWS::EC2::Instance
     Properties:
       IamInstanceProfile: !Ref rootS3InstanceProfile
+      KeyName: !Ref KeyName # CULO
       ImageId: !Ref AMIId
       InstanceType: t2.micro
       Monitoring: true
@@ -179,4 +189,5 @@ Outputs:
         - ''
         - - "https://"
           - !GetAtt ec2Instance.PublicDnsName
+          - ":443"
     Description: "Practice 2 - Application website"
